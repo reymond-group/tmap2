@@ -1116,6 +1116,18 @@ class TmapViz:
                     f"Edge indices must be < n_points ({n}). Got max edge index {max_idx}."
                 )
 
+    def _resolve_widget_color(self, color_key: str | None) -> str | list[str] | None:
+        """Translate a stored color key into something jscatter accepts.
+
+        Custom hex lists/dicts are saved under a ``_custom_<column>`` key in
+        ``self._custom_colormaps``; jscatter only understands matplotlib
+        colormap names or raw color lists, so resolve the key back to the
+        hex list before handing it over.
+        """
+        if isinstance(color_key, str) and color_key in self._custom_colormaps:
+            return list(self._custom_colormaps[color_key])
+        return color_key
+
     def to_widget(
         self,
         *,
@@ -1162,7 +1174,7 @@ class TmapViz:
 
         color_map: str | list[str] | dict[str, str] | None = None
         if selected_layout is not None:
-            color_map = self._columns[selected_layout].color
+            color_map = self._resolve_widget_color(self._columns[selected_layout].color)
 
         tooltip_properties = [name for name in self._labels_keys if name in self._columns]
 
@@ -1250,7 +1262,7 @@ class TmapViz:
                 def _on_layout_change(change: dict[str, Any]) -> None:
                     layout_name = change["new"]
                     col = self._columns[layout_name]
-                    cmap = col.color
+                    cmap = self._resolve_widget_color(col.color)
                     # Reset norm so jscatter re-derives min/max from the new column
                     scatter.color(by=layout_name, map=cmap, norm=None)
                     scatter.legend(True)
